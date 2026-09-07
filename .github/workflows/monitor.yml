@@ -1,0 +1,77 @@
+name: Monitor Xiaochan Update
+
+on:
+  schedule:
+    - cron: '0 * * * *' # 每小时执行一次
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Check for updates
+        env:
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+        run: |
+          REPO="lyrric/xiaochan"
+          FILE="last_check.json"
+          
+          # 获取最新数据
+          LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
+          RELEASE_TAG=$(echo $LATEST_RELEASE | jq -r '.tag_name // ""')
+          
+          LATEST_COMMIT=$(curl -s "https://api.github.com/repos/$REPO/commits/main")
+          COMMIT_SHA=$(echo $LATEST_COMMIT | jq -r '.sha // ""')
+          COMMIT_MSG=$(echo $LATEST_COMMIT | jq -r '.commit.message // ""')
+
+          # 读取旧数据
+          OLD_RELEASE=$(jq -r '.last_release_tag' $FILE)
+          OLD_SHA=$(jq -r '.last_commit_sha' $FILE)
+
+          NOTIFY_MSG=""
+          UPDATED=false
+
+          # 检查 Release 更新
+          if [ -n "$RELEASE_TAG" ] && [ "$RELEASE_TAG" != "$OLD_RELEASE" ] && [ "$OLD_RELEASE" != "" ]; then
+            NOTIFY_MSG="🚀 **发现新版本**: $RELEASE_TAG  \n"
+            UPDATED=true
+          fi
+
+          # 检查 Commit 更新
+          if [ "$COMMIT_SHA" != "$OLD_SHA" ] && [ "$OLD_SHA" != "" ]; then
+            NOTIFY_MSG="${NOTIFY_MSG}📝 **代码已更新**:  \n- 内容: $COMMIT_MSG  \n- SHA: \`${COMMIT_SHA:0:7}\`"
+            UPDATED=true
+          fi
+          
+          # 如果是第一次运行，只记录不通知
+          if [ "$OLD_SHA" == "" ]; then
+            echo "First run, initializing state..."
+            echo "{\"last_release_tag\":\"$RELEASE_TAG\", \"last_commit_sha\":\"$COMMIT_SHA\"}" > $FILE
+            UPDATED=true
+          else
+            if [ "$UPDATED" = true ]; then
+              echo "{\"last_release_tag\":\"$RELEASE_TAG\", \"last_commit_sha\":\"$COMMIT_SHA\"}" > $FILE
+              
+              # 发送 Server酱 通知
+              curl -s -X POST "https://sctapi.ftqq.com/${SERVERCHAN_SENDKEY}.send" \
+                -d "title=歪麦霸王餐更新提醒" \
+                -d "desp=$NOTIFY_MSG"
+              echo "Notification sent."
+            else
+              echo "No updates found."
+            fi
+          fi
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add last_check.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update last check state"
+          git push
