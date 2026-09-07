@@ -38,7 +38,13 @@ def fetch_xiaochan_data(city_code: int, lat: float, lng: float, token: str = "")
         "appid": "20",
         "X-Platform": "mini",
         "version": "3.15.9.10",
+        "X-Version": "3.15.9.10",
+        "x-Annie": "XC",
+        "X-Model": "microsoft microsoft",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) WindowsWechat(0x6309092b) XWEB/9079",
+        "Referer": "https://servicewechat.com/wx52ae84595214/965/page-frame.html",
+        "xweb_xhr": "1",
+        "Accept-Language": "zh-CN,zh;q=0.9",
     }
     if token:
         headers["token"] = token
@@ -53,11 +59,16 @@ def fetch_xiaochan_data(city_code: int, lat: float, lng: float, token: str = "")
 
     try:
         resp = requests.post(XC_BASE_URL, headers=headers, json=payload, timeout=10)
+        if resp.status_code != 200:
+            print(f"Status Code: {resp.status_code}")
+            print(f"Response: {resp.text}")
+            return []
         data = resp.json()
-        # 绠€鍗曟彁鍙栧晢瀹跺垪琛?
         return data.get("data", {}).get("list", [])
     except Exception as e:
         print(f"Error fetching Xiaochan: {e}")
+        if 'resp' in locals():
+            print(f"Raw Response: {resp.text}")
         return []
 
 if __name__ == "__main__":
