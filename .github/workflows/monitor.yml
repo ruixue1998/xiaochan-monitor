@@ -51,7 +51,9 @@ jobs:
 
           # 妫€鏌?Commit 鏇存柊
           if [ "$COMMIT_SHA" != "$OLD_SHA" ] && [ "$OLD_SHA" != "" ]; then
-            NOTIFY_MSG="${NOTIFY_MSG}馃摑 **浠ｇ爜宸叉洿鏂?*:  \n- 鍐呭: $COMMIT_MSG  \n- SHA: \`${COMMIT_SHA:0:7}\`"
+            # 浣跨敤 printf 閬垮厤娑堟伅涓殑鐗规畩瀛楃鐮村潖 shell 璇硶
+            MSG_LINE=$(printf "馃摑 **浠ｇ爜宸叉洿鏂?*:  \n- 鍐呭: %s  \n- SHA: \`%s\`" "$COMMIT_MSG" "${COMMIT_SHA:0:7}")
+            NOTIFY_MSG="${NOTIFY_MSG}${MSG_LINE}"
             UPDATED=true
           fi
           
