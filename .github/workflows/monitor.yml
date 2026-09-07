@@ -2,8 +2,8 @@ name: Monitor Xiaochan Update
 
 on:
   schedule:
-    - cron: '0 * * * *' # 每小时执行一次
-  workflow_dispatch: # 支持手动触发
+    - cron: '0 * * * *' # 姣忓皬鏃舵墽琛屼竴娆?
+  workflow_dispatch: # 鏀寔鎵嬪姩瑙﹀彂
 
 jobs:
   check-update:
@@ -22,34 +22,35 @@ jobs:
           REPO="lyrric/xiaochan"
           FILE="last_check.json"
           
-          # 获取最新数据
-          LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
-          RELEASE_TAG=$(echo $LATEST_RELEASE | jq -r '.tag_name // ""')
+          # 鑾峰彇鏈€鏂版暟鎹?
+          # 鏀圭敤鑾峰彇 releases 鍒楄〃鐨勭涓€涓紝浠ュ吋瀹?Pre-release
+          LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases")
+          RELEASE_TAG=$(echo $LATEST_RELEASE | jq -r '.[0].tag_name // ""')
           
-          LATEST_COMMIT=$(curl -s "https://api.github.com/repos/$REPO/commits/main")
+          LATEST_COMMIT=$(curl -s "https://api.github.com/repos/$REPO/commits/master")
           COMMIT_SHA=$(echo $LATEST_COMMIT | jq -r '.sha // ""')
           COMMIT_MSG=$(echo $LATEST_COMMIT | jq -r '.commit.message // ""')
 
-          # 读取旧数据
+          # 璇诲彇鏃ф暟鎹?
           OLD_RELEASE=$(jq -r '.last_release_tag' $FILE)
           OLD_SHA=$(jq -r '.last_commit_sha' $FILE)
 
           NOTIFY_MSG=""
           UPDATED=false
 
-          # 检查 Release 更新
+          # 妫€鏌?Release 鏇存柊
           if [ -n "$RELEASE_TAG" ] && [ "$RELEASE_TAG" != "$OLD_RELEASE" ] && [ "$OLD_RELEASE" != "" ]; then
-            NOTIFY_MSG="🚀 **发现新版本**: $RELEASE_TAG  \n"
+            NOTIFY_MSG="馃殌 **鍙戠幇鏂扮増鏈?*: $RELEASE_TAG  \n"
             UPDATED=true
           fi
 
-          # 检查 Commit 更新
+          # 妫€鏌?Commit 鏇存柊
           if [ "$COMMIT_SHA" != "$OLD_SHA" ] && [ "$OLD_SHA" != "" ]; then
-            NOTIFY_MSG="${NOTIFY_MSG}📝 **代码已更新**:  \n- 内容: $COMMIT_MSG  \n- SHA: \`${COMMIT_SHA:0:7}\`"
+            NOTIFY_MSG="${NOTIFY_MSG}馃摑 **浠ｇ爜宸叉洿鏂?*:  \n- 鍐呭: $COMMIT_MSG  \n- SHA: \`${COMMIT_SHA:0:7}\`"
             UPDATED=true
           fi
           
-          # 如果是第一次运行，只记录不通知
+          # 濡傛灉鏄涓€娆¤繍琛岋紝鍙褰曚笉閫氱煡
           if [ "$OLD_SHA" == "" ]; then
             echo "First run, initializing state..."
             echo "{\"last_release_tag\":\"$RELEASE_TAG\", \"last_commit_sha\":\"$COMMIT_SHA\"}" > $FILE
@@ -58,9 +59,9 @@ jobs:
             if [ "$UPDATED" = true ]; then
               echo "{\"last_release_tag\":\"$RELEASE_TAG\", \"last_commit_sha\":\"$COMMIT_SHA\"}" > $FILE
               
-              # 发送 Server酱 通知
+              # 鍙戦€?Server閰?閫氱煡
               curl -s -X POST "https://sctapi.ftqq.com/${SERVERCHAN_SENDKEY}.send" \
-                -d "title=歪麦霸王餐更新提醒" \
+                -d "title=姝害闇哥帇椁愭洿鏂版彁閱? \
                 -d "desp=$NOTIFY_MSG"
               echo "Notification sent."
             else
